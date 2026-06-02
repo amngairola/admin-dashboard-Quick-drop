@@ -4,7 +4,10 @@ import { motion } from 'framer-motion'
 import StatsCard from '../components/StatsCard'
 import TrendChart from '../components/TrendChart'
 import RecentActivity from '../components/RecentActivity'
-import { TrendingUp, MapPin, DollarSign, Activity, Calendar } from 'lucide-react'
+import { useBookingStats } from '@/lib/hooks/useBookings'
+import { useUserStats } from '@/lib/hooks/useAnalytics'
+import { useRecentBookings } from '@/lib/hooks/useBookings'
+import { TrendingUp, Users, MapPin, DollarSign, Activity, Clock } from 'lucide-react'
 
 const container = {
   hidden: { opacity: 0 },
@@ -23,6 +26,55 @@ const item = {
 }
 
 export default function Dashboard() {
+  const { data: bookingStats, isLoading: statsLoading } = useBookingStats()
+  const { data: userStats, isLoading: usersLoading } = useUserStats()
+  const { data: recentBookings = [] } = useRecentBookings(5)
+
+  const stats = [
+    {
+      title: 'Total Bookings',
+      value: bookingStats ? bookingStats.total_completed : 0,
+      icon: Activity,
+      color: 'text-blue-500',
+      trend: '+12% from last week',
+    },
+    {
+      title: 'Total Revenue',
+      value: '$12,450',
+      icon: DollarSign,
+      color: 'text-green-500',
+      trend: '+8% from last week',
+    },
+    {
+      title: 'Active Users',
+      value: userStats ? (userStats.total_riders + userStats.total_drivers).toString() : 0,
+      icon: Users,
+      color: 'text-purple-500',
+      trend: `${userStats?.total_drivers || 0} drivers, ${userStats?.total_riders || 0} riders`,
+    },
+    {
+      title: 'Pending Bookings',
+      value: bookingStats?.total_pending || 0,
+      icon: Clock,
+      color: 'text-yellow-500',
+      trend: 'Awaiting driver assignment',
+    },
+    {
+      title: 'Completed Today',
+      value: bookingStats?.total_completed || 0,
+      icon: TrendingUp,
+      color: 'text-emerald-500',
+      trend: '98% completion rate',
+    },
+    {
+      title: 'Avg Rating',
+      value: '4.8',
+      icon: MapPin,
+      color: 'text-orange-500',
+      trend: 'Based on 2,345 rides',
+    },
+  ]
+
   return (
     <div className="p-6 space-y-8">
       {/* Header */}
@@ -38,89 +90,85 @@ export default function Dashboard() {
         animate="show"
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
       >
-        <motion.div variants={item}>
-          <StatsCard
-            title="Total Bookings"
-            value="2,453"
-            change="+12.5%"
-            icon={Calendar}
-            color="bg-chart-1"
-          />
-        </motion.div>
-        <motion.div variants={item}>
-          <StatsCard
-            title="Revenue"
-            value="$24,580"
-            change="+8.2%"
-            icon={DollarSign}
-            color="bg-chart-2"
-          />
-        </motion.div>
-        <motion.div variants={item}>
-          <StatsCard
-            title="Active Users"
-            value="1,829"
-            change="+5.1%"
-            icon={TrendingUp}
-            color="bg-chart-3"
-          />
-        </motion.div>
-      </motion.div>
-
-      {/* Additional Stats Row */}
-      <motion.div
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-      >
-        <motion.div variants={item}>
-          <StatsCard
-            title="Active Drivers"
-            value="456"
-            change="+3.2%"
-            icon={Activity}
-            color="bg-chart-4"
-          />
-        </motion.div>
-        <motion.div variants={item}>
-          <StatsCard
-            title="Completed Rides"
-            value="8,421"
-            change="+15.3%"
-            icon={TrendingUp}
-            color="bg-chart-5"
-          />
-        </motion.div>
-        <motion.div variants={item}>
-          <StatsCard
-            title="Avg Rating"
-            value="4.8"
-            change="+0.3"
-            icon={MapPin}
-            color="bg-accent"
-          />
-        </motion.div>
+        {stats.map((stat, index) => (
+          <motion.div key={index} variants={item}>
+            <StatsCard
+              title={stat.title}
+              value={stat.value}
+              icon={stat.icon}
+              color={stat.color}
+              trend={stat.trend}
+            />
+          </motion.div>
+        ))}
       </motion.div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 30 }}
-          className="lg:col-span-2"
+          transition={{ delay: 0.6 }}
         >
           <TrendChart />
         </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, type: 'spring', stiffness: 300, damping: 30 }}
+          transition={{ delay: 0.7 }}
+          className="bg-card rounded-lg border border-border p-6"
         >
-          <RecentActivity />
+          <h2 className="text-lg font-semibold mb-4">Booking Status Distribution</h2>
+          <div className="space-y-4">
+            {[
+              {
+                label: 'Completed',
+                value: bookingStats?.total_completed || 0,
+                percentage: 65,
+                color: 'bg-green-500',
+              },
+              {
+                label: 'Ongoing',
+                value: bookingStats?.total_ongoing || 0,
+                percentage: 20,
+                color: 'bg-blue-500',
+              },
+              {
+                label: 'Pending',
+                value: bookingStats?.total_pending || 0,
+                percentage: 10,
+                color: 'bg-yellow-500',
+              },
+              {
+                label: 'Cancelled',
+                value: bookingStats?.total_cancelled || 0,
+                percentage: 5,
+                color: 'bg-red-500',
+              },
+            ].map((status, idx) => (
+              <div key={idx}>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm font-medium">{status.label}</span>
+                  <span className="text-sm text-muted-foreground">{status.value}</span>
+                </div>
+                <div className="w-full bg-secondary rounded-full h-2">
+                  <div className={`${status.color} h-2 rounded-full`} style={{ width: `${status.percentage}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
         </motion.div>
       </div>
+
+      {/* Recent Activity */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8 }}
+      >
+        <RecentActivity bookings={recentBookings} />
+      </motion.div>
     </div>
   )
 }

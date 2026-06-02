@@ -1,95 +1,44 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { Search, MapPin, Clock, User, Smartphone } from 'lucide-react'
 import { useState } from 'react'
-
-interface Booking {
-  id: string
-  passanger: string
-  driver: string
-  from: string
-  to: string
-  status: 'completed' | 'in-progress' | 'cancelled' | 'scheduled'
-  fare: number
-  date: string
-  time: string
-}
-
-const bookings: Booking[] = [
-  {
-    id: 'BK001',
-    passanger: 'Sarah Johnson',
-    driver: 'John Smith',
-    from: '123 Main St',
-    to: '456 Oak Ave',
-    status: 'completed',
-    fare: 24.5,
-    date: '2024-06-02',
-    time: '14:30',
-  },
-  {
-    id: 'BK002',
-    passanger: 'Michael Chen',
-    driver: 'Emma Davis',
-    from: '789 Pine Rd',
-    to: '321 Elm St',
-    status: 'in-progress',
-    fare: 18.75,
-    date: '2024-06-02',
-    time: '15:45',
-  },
-  {
-    id: 'BK003',
-    passanger: 'Lisa Martinez',
-    driver: 'Tom Wilson',
-    from: 'Airport Terminal A',
-    to: 'Downtown Hotel',
-    status: 'scheduled',
-    fare: 42.0,
-    date: '2024-06-02',
-    time: '16:00',
-  },
-  {
-    id: 'BK004',
-    passanger: 'Robert Brown',
-    driver: 'Not assigned',
-    from: '555 Maple Dr',
-    to: 'City Center',
-    status: 'cancelled',
-    fare: 31.25,
-    date: '2024-06-02',
-    time: '13:15',
-  },
-]
+import { motion } from 'framer-motion'
+import { useBookings } from '@/lib/hooks/useBookings'
+import { updateBookingStatus } from '@/lib/services/bookings'
+import { Search, MapPin, DollarSign, MoreVertical } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
 
 export default function Bookings() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState<string>('all')
-
-  const filteredBookings = bookings.filter((booking) => {
-    const matchesSearch =
-      booking.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.passanger.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.driver.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesFilter = filterStatus === 'all' || booking.status === filterStatus
-
-    return matchesSearch && matchesFilter
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const { data: bookings = [], refetch } = useBookings({
+    status: statusFilter === 'all' ? undefined : statusFilter,
   })
+
+  const filteredBookings = bookings.slice(0, 50)
+
+  const handleStatusChange = async (bookingId: string, newStatus: string) => {
+    try {
+      await updateBookingStatus(bookingId, newStatus as any)
+      refetch()
+    } catch (error) {
+      console.error('Error updating booking status:', error)
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-500/20 text-green-400'
-      case 'in-progress':
-        return 'bg-blue-500/20 text-blue-400'
-      case 'scheduled':
-        return 'bg-yellow-500/20 text-yellow-400'
+        return 'bg-green-500/10 text-green-500'
+      case 'ongoing':
+        return 'bg-blue-500/10 text-blue-500'
+      case 'pending':
+        return 'bg-yellow-500/10 text-yellow-500'
       case 'cancelled':
-        return 'bg-red-500/20 text-red-400'
+        return 'bg-red-500/10 text-red-500'
+      case 'accepted':
+        return 'bg-purple-500/10 text-purple-500'
       default:
-        return 'bg-gray-500/20 text-gray-400'
+        return 'bg-gray-500/10 text-gray-500'
     }
   }
 
@@ -97,155 +46,154 @@ export default function Bookings() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-        <h1 className="text-3xl font-bold">Bookings</h1>
-        <p className="text-muted-foreground">View and manage all ride bookings</p>
+        <h1 className="text-3xl font-bold">Booking Management</h1>
+        <p className="text-muted-foreground">Monitor and manage all ride bookings</p>
       </motion.div>
 
-      {/* Toolbar */}
+      {/* Filters */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex gap-4 flex-col sm:flex-row sm:items-center sm:justify-between"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="flex flex-col sm:flex-row gap-4"
       >
-        <div className="flex-1 flex items-center gap-2 bg-secondary rounded-lg px-3 py-2">
-          <Search className="w-4 h-4 text-muted-foreground" />
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search bookings..."
+            placeholder="Search by location..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-transparent border-none outline-none text-sm flex-1 text-foreground placeholder:text-muted-foreground"
+            className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
 
-        {/* Filter */}
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-4 py-2 bg-secondary border border-border rounded-lg text-sm font-medium outline-none cursor-pointer hover:border-accent transition-colors"
-        >
-          <option value="all">All Status</option>
-          <option value="completed">Completed</option>
-          <option value="in-progress">In Progress</option>
-          <option value="scheduled">Scheduled</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+        <div className="flex gap-2">
+          {['all', 'pending', 'accepted', 'ongoing', 'completed', 'cancelled'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${
+                statusFilter === status
+                  ? 'bg-accent text-accent-foreground'
+                  : 'bg-secondary text-foreground hover:bg-border'
+              }`}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </button>
+          ))}
+        </div>
       </motion.div>
 
-      {/* Bookings Grid */}
+      {/* Bookings Table */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+        className="bg-card rounded-lg border border-border overflow-hidden"
       >
-        {filteredBookings.map((booking, index) => (
-          <motion.div
-            key={booking.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow"
-          >
-            {/* Booking Header */}
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{booking.id}</p>
-                <h3 className="text-lg font-semibold mt-1">{booking.passanger}</h3>
-              </div>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusColor(booking.status)}`}
-              >
-                {booking.status.replace('-', ' ')}
-              </span>
-            </div>
-
-            {/* Route */}
-            <div className="space-y-3 mb-4">
-              <div className="flex gap-3">
-                <MapPin className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-muted-foreground">From</p>
-                  <p className="text-sm font-medium">{booking.from}</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <MapPin className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-muted-foreground">To</p>
-                  <p className="text-sm font-medium">{booking.to}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Details Grid */}
-            <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-border">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Driver</p>
-                <div className="flex items-center gap-1.5">
-                  <User className="w-3 h-3 text-muted-foreground" />
-                  <p className="text-sm font-medium">{booking.driver}</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Date & Time</p>
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3 h-3 text-muted-foreground" />
-                  <p className="text-sm font-medium">
-                    {booking.time}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Fare</p>
-                <p className="text-lg font-bold">${booking.fare.toFixed(2)}</p>
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-4 py-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition-colors text-sm font-medium"
-              >
-                View Details
-              </motion.button>
-            </div>
-          </motion.div>
-        ))}
-      </motion.div>
-
-      {/* Empty State */}
-      {filteredBookings.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No bookings found</p>
-        </div>
-      )}
-
-      {/* Pagination */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="flex items-center justify-between"
-      >
-        <p className="text-sm text-muted-foreground">Showing {filteredBookings.length} of {bookings.length} bookings</p>
-        <div className="flex gap-2">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-3 py-2 border border-border rounded-lg hover:bg-secondary transition-colors text-sm font-medium"
-          >
-            Previous
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-3 py-2 border border-border rounded-lg hover:bg-secondary transition-colors text-sm font-medium"
-          >
-            Next
-          </motion.button>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-secondary/50">
+                <th className="px-6 py-3 text-left text-sm font-semibold">Route</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Status</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Distance</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Fare</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Time</th>
+                <th className="px-6 py-3 text-right text-sm font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBookings.length > 0 ? (
+                filteredBookings.map((booking, index) => (
+                  <motion.tr
+                    key={booking.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="border-b border-border hover:bg-secondary/50 transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium text-sm">{booking.pickup_location}</p>
+                          <p className="text-xs text-muted-foreground">{booking.dropoff_location}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm">{booking.distance_km?.toFixed(1) || '-'} km</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{booking.fare?.toFixed(2) || '0.00'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(booking.created_at), { addSuffix: true })}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {booking.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleStatusChange(booking.id, 'accepted')}
+                              className="px-3 py-1 bg-green-500/10 text-green-500 rounded text-xs font-medium hover:bg-green-500/20 transition-colors"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(booking.id, 'cancelled')}
+                              className="px-3 py-1 bg-red-500/10 text-red-500 rounded text-xs font-medium hover:bg-red-500/20 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                        {booking.status === 'accepted' && (
+                          <button
+                            onClick={() => handleStatusChange(booking.id, 'ongoing')}
+                            className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded text-xs font-medium hover:bg-blue-500/20 transition-colors"
+                          >
+                            Start
+                          </button>
+                        )}
+                        {booking.status === 'ongoing' && (
+                          <button
+                            onClick={() => handleStatusChange(booking.id, 'completed')}
+                            className="px-3 py-1 bg-green-500/10 text-green-500 rounded text-xs font-medium hover:bg-green-500/20 transition-colors"
+                          >
+                            Complete
+                          </button>
+                        )}
+                        {booking.status !== 'completed' && booking.status !== 'cancelled' && (
+                          <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                    No bookings found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </motion.div>
     </div>

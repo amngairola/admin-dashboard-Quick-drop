@@ -1,25 +1,18 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
-
-const revenueByCategory = [
-  { name: 'Regular', value: 45, fill: '#488f47' },
-  { name: 'Premium', value: 28, fill: '#7c3aed' },
-  { name: 'Business', value: 27, fill: '#3b82f6' },
-]
-
-const rideDistribution = [
-  { month: 'Mon', rides: 240, revenue: 2400 },
-  { month: 'Tue', rides: 320, revenue: 2800 },
-  { month: 'Wed', rides: 280, revenue: 2400 },
-  { month: 'Thu', rides: 390, revenue: 3500 },
-  { month: 'Fri', rides: 450, revenue: 4000 },
-  { month: 'Sat', rides: 520, revenue: 4600 },
-  { month: 'Sun', rides: 380, revenue: 3400 },
-]
+import { useRevenueStats, useTopRoutes, useUserStats } from '@/lib/hooks/useAnalytics'
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } from 'recharts'
 
 export default function Analytics() {
+  const { data: revenueStats } = useRevenueStats()
+  const { data: topRoutes = [] } = useTopRoutes()
+  const { data: userStats } = useUserStats()
+
+  const routeData = topRoutes.slice(0, 7).map((route) => ({
+    name: route.route.substring(0, 20),
+    revenue: route.total_revenue,
+  }))
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -35,10 +28,10 @@ export default function Analytics() {
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
       >
         {[
-          { label: 'Avg Ride Duration', value: '18.5 min', change: '+2.3%' },
-          { label: 'Avg Rating', value: '4.8', change: '+0.2' },
-          { label: 'Cancellation Rate', value: '2.5%', change: '-0.8%' },
-          { label: 'Peak Hour', value: '6 PM', change: 'Consistent' },
+          { label: 'Total Revenue', value: `$${(revenueStats?.this_month?.total_revenue || 0).toFixed(0)}`, change: 'This Month' },
+          { label: 'Total Riders', value: userStats?.total_riders || 0, change: 'Active Users' },
+          { label: 'Total Drivers', value: userStats?.total_drivers || 0, change: 'Available' },
+          { label: 'Avg Fare', value: `$${(revenueStats?.this_month?.average_fare || 0).toFixed(2)}`, change: 'Per Ride' },
         ].map((metric, index) => (
           <motion.div
             key={index}
@@ -56,7 +49,7 @@ export default function Analytics() {
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Weekly Distribution */}
+        {/* Top Routes */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -64,14 +57,14 @@ export default function Analytics() {
           className="bg-card border border-border rounded-xl p-6"
         >
           <div className="mb-6">
-            <h3 className="text-lg font-semibold">Weekly Distribution</h3>
-            <p className="text-sm text-muted-foreground mt-1">Rides and revenue by day</p>
+            <h3 className="text-lg font-semibold">Top Routes</h3>
+            <p className="text-sm text-muted-foreground mt-1">By revenue</p>
           </div>
 
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={rideDistribution}>
+            <BarChart data={routeData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="month" stroke="var(--muted-foreground)" style={{ fontSize: '12px' }} />
+              <XAxis dataKey="name" stroke="var(--muted-foreground)" style={{ fontSize: '12px' }} />
               <YAxis stroke="var(--muted-foreground)" style={{ fontSize: '12px' }} />
               <Tooltip
                 contentStyle={{
@@ -81,12 +74,12 @@ export default function Analytics() {
                 }}
                 labelStyle={{ color: 'var(--foreground)' }}
               />
-              <Bar dataKey="rides" fill="var(--chart-1)" />
+              <Bar dataKey="revenue" fill="var(--chart-1)" />
             </BarChart>
           </ResponsiveContainer>
         </motion.div>
 
-        {/* Revenue Distribution */}
+        {/* Revenue Summary */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -94,38 +87,40 @@ export default function Analytics() {
           className="bg-card border border-border rounded-xl p-6"
         >
           <div className="mb-6">
-            <h3 className="text-lg font-semibold">Revenue Distribution</h3>
-            <p className="text-sm text-muted-foreground mt-1">By service type</p>
+            <h3 className="text-lg font-semibold">Revenue Summary</h3>
+            <p className="text-sm text-muted-foreground mt-1">Last 30 days vs This month</p>
           </div>
 
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie data={revenueByCategory} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="value">
-                {revenueByCategory.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                }}
-                labelStyle={{ color: 'var(--foreground)' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-
-          {/* Legend */}
-          <div className="flex gap-4 justify-center mt-6 flex-wrap">
-            {revenueByCategory.map((item) => (
-              <div key={item.name} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.fill }} />
-                <span className="text-xs text-muted-foreground">
-                  {item.name} ({item.value}%)
-                </span>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium">Total Revenue</span>
+                <span className="text-sm font-bold">${(revenueStats?.this_month?.total_revenue || 0).toFixed(2)}</span>
               </div>
-            ))}
+              <div className="w-full bg-secondary rounded-full h-2">
+                <div className="bg-accent h-2 rounded-full" style={{ width: '75%' }} />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium">Commission</span>
+                <span className="text-sm font-bold">${(revenueStats?.this_month?.total_commission || 0).toFixed(2)}</span>
+              </div>
+              <div className="w-full bg-secondary rounded-full h-2">
+                <div className="bg-accent h-2 rounded-full" style={{ width: '45%' }} />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium">Net Revenue</span>
+                <span className="text-sm font-bold">${(revenueStats?.this_month?.net_revenue || 0).toFixed(2)}</span>
+              </div>
+              <div className="w-full bg-secondary rounded-full h-2">
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: '80%' }} />
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>
