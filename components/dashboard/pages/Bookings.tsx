@@ -2,15 +2,15 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { useBookings, useUpdateBookingStatus } from '@/lib/hooks/useBookings'
-import { Search, MapPin, DollarSign, MoreVertical, Phone } from 'lucide-react'
+import { useBookingsWithCustomer, useUpdateBookingStatus } from '@/lib/hooks/useBookings'
+import { Search, MapPin, DollarSign, MoreVertical, Phone, User } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
 
 export default function Bookings() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const { data: bookings = [] } = useBookings({
+  const { data: bookings = [] } = useBookingsWithCustomer({
     status: statusFilter === 'all' ? undefined : statusFilter,
     search: searchTerm,
   })
@@ -102,6 +102,7 @@ export default function Bookings() {
             <thead>
               <tr className="border-b border-border bg-secondary/50">
                 <th className="px-6 py-3 text-left text-sm font-semibold">Booking ID</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Customer</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold">Pickup</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold">Dropoff</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold">Phone</th>
@@ -123,6 +124,15 @@ export default function Bookings() {
                   >
                     <td className="px-6 py-4">
                       <span className="text-sm font-mono text-muted-foreground">{booking.id.slice(0, 8)}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{booking.customer_name || 'Unknown'}</p>
+                          <p className="text-xs text-muted-foreground truncate">{booking.customer_email}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -199,7 +209,7 @@ export default function Bookings() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-6 py-8 text-center text-muted-foreground">
                     No bookings found
                   </td>
                 </tr>

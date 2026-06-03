@@ -2,22 +2,38 @@ import { createClient } from '@/lib/supabase/client'
 
 export interface Notification {
   id: string
-  admin_id: string
-  booking_id?: string
-  title: string
+  user_id: string
+  booking_id: string
   message: string
-  type: 'booking' | 'user' | 'system'
+  type: 'booking_created' | 'booking_updated' | 'booking_completed' | 'booking_cancelled'
   is_read: boolean
   created_at: string
 }
 
-export async function getNotifications(adminId: string) {
+export async function createNotification(notification: Omit<Notification, 'id' | 'created_at'>) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('notifications')
+    .insert([notification])
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating notification:', error)
+    throw error
+  }
+
+  return (data as Notification) || null
+}
+
+export async function getNotifications(userId: string, limit: number = 20) {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('notifications')
     .select('*')
-    .eq('admin_id', adminId)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false })
+    .limit(limit)
 
   if (error) {
     console.error('Error fetching notifications:', error)
@@ -27,12 +43,28 @@ export async function getNotifications(adminId: string) {
   return (data as Notification[]) || []
 }
 
-export async function getUnreadNotifications(adminId: string) {
+export async function getUnreadNotificationCount(userId: string) {
+  const supabase = createClient()
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact' })
+    .eq('user_id', userId)
+    .eq('is_read', false)
+
+  if (error) {
+    console.error('Error fetching unread notification count:', error)
+    return 0
+  }
+
+  return count || 0
+}
+
+export async function getUnreadNotifications(userId: string) {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('notifications')
     .select('*')
-    .eq('admin_id', adminId)
+    .eq('user_id', userId)
     .eq('is_read', false)
     .order('created_at', { ascending: false })
 
@@ -46,15 +78,35 @@ export async function getUnreadNotifications(adminId: string) {
 
 export async function markNotificationAsRead(notificationId: string) {
   const supabase = createClient()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('notifications')
     .update({ is_read: true })
     .eq('id', notificationId)
+    .select()
+    .single()
 
   if (error) {
     console.error('Error marking notification as read:', error)
     throw error
   }
+
+  return (data as Notification) || null
+}
+
+export async function markAllNotificationsAsRead(userId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('user_id', userId)
+    .eq('is_read', false)
+
+  if (error) {
+    console.error('Error marking all notifications as read:', error)
+    throw error
+  }
+
+  return data
 }
 
 export async function deleteNotification(notificationId: string) {
@@ -70,44 +122,21 @@ export async function deleteNotification(notificationId: string) {
   }
 }
 
-export async function createNotification(
-  adminId: string,
-  notification: Omit<Notification, 'id' | 'admin_id' | 'is_read' | 'created_at'>
-) {
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('notifications')
-    .insert({
-      admin_id: adminId,
-      ...notification,
-      is_read: false,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating notification:', error)
-    throw error
-  }
-
-  return (data as Notification) || null
-}
-
-export async function subscribeToNotifications(
-  adminId: string,
+export function subscribeToNotifications(
+  userId: string,
   callback: (notification: Notification) => void
 ) {
   const supabase = createClient()
 
   const channel = supabase
-    .channel(`notifications:${adminId}`)
+    .channel(`notifications:${userId}`)
     .on(
       'postgres_changes',
       {
         event: 'INSERT',
         schema: 'public',
         table: 'notifications',
-        filter: `admin_id=eq.${adminId}`,
+        filter: `user_id=eq.${userId}`,
       },
       (payload) => {
         callback(payload.new as Notification)

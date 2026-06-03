@@ -39,7 +39,7 @@ export async function getBookings(filters?: {
 
   if (filters?.search) {
     query = query.or(
-      `phone.ilike.%${filters.search}%,pickup_address.ilike.%${filters.search}%,drop_address.ilike.%${filters.search}%`
+      `id.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,pickup_address.ilike.%${filters.search}%,drop_address.ilike.%${filters.search}%`
     )
   }
 
@@ -77,7 +77,6 @@ export async function updateBookingStatus(id: string, status: Booking['status'])
     .from('bookings')
     .update({
       status,
-      updated_at: new Date().toISOString(),
     })
     .eq('id', id)
     .select()
@@ -126,6 +125,57 @@ export async function getRecentBookings(limit: number = 10) {
   }
 
   return (data as Booking[]) || []
+}
+
+export interface BookingWithCustomer extends Booking {
+  customer_name?: string
+  customer_email?: string
+}
+
+export async function getBookingsWithCustomer(filters?: {
+  status?: string
+  userId?: string
+  search?: string
+  dateRange?: { from: Date; to: Date }
+}) {
+  const supabase = createClient()
+  let query = supabase
+    .from('bookings')
+    .select('*, users(name, email)')
+    .order('created_at', { ascending: false })
+
+  if (filters?.status && filters.status !== 'all') {
+    query = query.eq('status', filters.status)
+  }
+
+  if (filters?.userId) {
+    query = query.eq('user_id', filters.userId)
+  }
+
+  if (filters?.search) {
+    query = query.or(
+      `id.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,pickup_address.ilike.%${filters.search}%,drop_address.ilike.%${filters.search}%`
+    )
+  }
+
+  if (filters?.dateRange) {
+    query = query
+      .gte('created_at', filters.dateRange.from.toISOString())
+      .lte('created_at', filters.dateRange.to.toISOString())
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('Error fetching bookings with customer info:', error)
+    return []
+  }
+
+  return (data as any[])?.map((booking: any) => ({
+    ...booking,
+    customer_name: booking.users?.name,
+    customer_email: booking.users?.email,
+  })) || []
 }
 
 export async function getBookingStats() {

@@ -1,10 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getBookings, getRecentBookings, getBookingStats, updateBookingStatus, type Booking } from '@/lib/services/bookings'
+import { getBookings, getRecentBookings, getBookingStats, updateBookingStatus, getBookingsWithCustomer, type Booking } from '@/lib/services/bookings'
 
 export function useBookings(filters?: Parameters<typeof getBookings>[0]) {
   return useQuery({
     queryKey: ['bookings', filters],
     queryFn: () => getBookings(filters),
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+export function useBookingsWithCustomer(filters?: Parameters<typeof getBookingsWithCustomer>[0]) {
+  return useQuery({
+    queryKey: ['bookings:with-customer', filters],
+    queryFn: () => getBookingsWithCustomer(filters),
     staleTime: 1000 * 60 * 5,
   })
 }
