@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getBookings, getRecentBookings, getBookingStats, updateBookingStatus, getBookingsWithCustomer, type Booking } from '@/lib/services/bookings'
+import { createClient } from '@/lib/supabase/client'
 
 export function useBookings(filters?: Parameters<typeof getBookings>[0]) {
   return useQuery({
@@ -41,8 +43,44 @@ export function useUpdateBookingStatus() {
       updateBookingStatus(bookingId, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings:with-customer'] })
       queryClient.invalidateQueries({ queryKey: ['bookings:stats'] })
       queryClient.invalidateQueries({ queryKey: ['bookings:recent'] })
     },
   })
+}
+
+/**
+ * Real-time subscription to booking changes
+ * Automatically invalidates cache when new bookings are created or updated
+ */
+export function useBookingsRealtime() {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    const channel = supabase
+      .channel('bookings:changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+        },
+        (payload) => {
+          // Invalidate all booking queries to refetch latest data
+          queryClient.invalidateQueries({ queryKey: ['bookings'] })
+          queryClient.invalidateQueries({ queryKey: ['bookings:with-customer'] })
+          queryClient.invalidateQueries({ queryKey: ['bookings:stats'] })
+          queryClient.invalidateQueries({ queryKey: ['bookings:recent'] })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [queryClient])
 }

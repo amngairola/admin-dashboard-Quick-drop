@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { useBookingsWithCustomer, useUpdateBookingStatus } from '@/lib/hooks/useBookings'
-import { Search, MapPin, DollarSign, MoreVertical, Phone, User } from 'lucide-react'
+import { useBookingsWithCustomer, useUpdateBookingStatus, useBookingsRealtime } from '@/lib/hooks/useBookings'
+import { Search, MapPin, DollarSign, MoreVertical, Phone, User, Zap } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
 
@@ -16,6 +16,9 @@ export default function Bookings() {
   })
 
   const updateBooking = useUpdateBookingStatus()
+  
+  // Subscribe to real-time booking updates from customer app
+  useBookingsRealtime()
 
   const handleStatusChange = async (bookingId: string, newStatus: string) => {
     try {
@@ -106,8 +109,10 @@ export default function Bookings() {
                 <th className="px-6 py-3 text-left text-sm font-semibold">Pickup</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold">Dropoff</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold">Phone</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Status</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Distance</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold">Price</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Payment</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Status</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold">Time</th>
                 <th className="px-6 py-3 text-right text-sm font-semibold">Actions</th>
               </tr>
@@ -150,15 +155,21 @@ export default function Bookings() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                      </span>
+                      <span className="text-sm font-medium">{booking.distance_km?.toFixed(1) || '-'} km</span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1">
                         <DollarSign className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm font-medium">${booking.estimated_price.toFixed(2)}</span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm capitalize">{booking.payment_method || '-'}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-muted-foreground">
@@ -209,7 +220,7 @@ export default function Bookings() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-muted-foreground">
+                  <td colSpan={11} className="px-6 py-8 text-center text-muted-foreground">
                     No bookings found
                   </td>
                 </tr>
