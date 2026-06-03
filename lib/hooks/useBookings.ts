@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { getBookings, getRecentBookings, getBookingStats, type Booking } from '@/lib/services/bookings'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getBookings, getRecentBookings, getBookingStats, updateBookingStatus, type Booking } from '@/lib/services/bookings'
 
 export function useBookings(filters?: Parameters<typeof getBookings>[0]) {
   return useQuery({
@@ -22,5 +22,19 @@ export function useBookingStats() {
     queryKey: ['bookings:stats'],
     queryFn: () => getBookingStats(),
     staleTime: 1000 * 60 * 5,
+  })
+}
+
+export function useUpdateBookingStatus() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ bookingId, status }: { bookingId: string; status: Booking['status'] }) =>
+      updateBookingStatus(bookingId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings:stats'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings:recent'] })
+    },
   })
 }

@@ -62,6 +62,7 @@ export function useNotificationSubscription() {
   useEffect(() => {
     if (!userId) return
 
+    const supabase = createClient()
     const channel = supabase
       .channel(`notifications:${userId}`)
       .on(
@@ -69,12 +70,11 @@ export function useNotificationSubscription() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'notifications',
-          filter: `admin_id=eq.${userId}`,
+          table: 'bookings',
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
-          queryClient.invalidateQueries({ queryKey: ['notifications:unread', userId] })
+          queryClient.invalidateQueries({ queryKey: ['bookings'] })
+          queryClient.invalidateQueries({ queryKey: ['bookings:stats'] })
         }
       )
       .subscribe()

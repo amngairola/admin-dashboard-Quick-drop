@@ -1,18 +1,12 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useRevenueStats, useTopRoutes, useUserStats } from '@/lib/hooks/useAnalytics'
+import { useRevenueStats, useUserStats } from '@/lib/hooks/useAnalytics'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } from 'recharts'
 
 export default function Analytics() {
   const { data: revenueStats } = useRevenueStats()
-  const { data: topRoutes = [] } = useTopRoutes()
   const { data: userStats } = useUserStats()
-
-  const routeData = topRoutes.slice(0, 7).map((route) => ({
-    name: route.route.substring(0, 20),
-    revenue: route.total_revenue,
-  }))
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -28,10 +22,10 @@ export default function Analytics() {
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
       >
         {[
-          { label: 'Total Revenue', value: `$${(revenueStats?.this_month?.total_revenue || 0).toFixed(0)}`, change: 'This Month' },
-          { label: 'Total Riders', value: userStats?.total_riders || 0, change: 'Active Users' },
-          { label: 'Total Drivers', value: userStats?.total_drivers || 0, change: 'Available' },
-          { label: 'Avg Fare', value: `$${(revenueStats?.this_month?.average_fare || 0).toFixed(2)}`, change: 'Per Ride' },
+          { label: 'Revenue Today', value: `$${(revenueStats?.today || 0).toFixed(0)}`, change: 'Today' },
+          { label: 'This Week', value: `$${(revenueStats?.this_week || 0).toFixed(0)}`, change: 'Last 7 days' },
+          { label: 'This Month', value: `$${(revenueStats?.this_month || 0).toFixed(0)}`, change: 'Current month' },
+          { label: 'Total Users', value: userStats?.total_users || 0, change: 'Registered' },
         ].map((metric, index) => (
           <motion.div
             key={index}
@@ -48,37 +42,7 @@ export default function Analytics() {
       </motion.div>
 
       {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Routes */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-card border border-border rounded-xl p-6"
-        >
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold">Top Routes</h3>
-            <p className="text-sm text-muted-foreground mt-1">By revenue</p>
-          </div>
-
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={routeData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="name" stroke="var(--muted-foreground)" style={{ fontSize: '12px' }} />
-              <YAxis stroke="var(--muted-foreground)" style={{ fontSize: '12px' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                }}
-                labelStyle={{ color: 'var(--foreground)' }}
-              />
-              <Bar dataKey="revenue" fill="var(--chart-1)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </motion.div>
-
+      <div className="grid grid-cols-1 gap-6">
         {/* Revenue Summary */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -94,31 +58,31 @@ export default function Analytics() {
           <div className="space-y-4">
             <div>
               <div className="flex justify-between mb-2">
-                <span className="text-sm font-medium">Total Revenue</span>
-                <span className="text-sm font-bold">${(revenueStats?.this_month?.total_revenue || 0).toFixed(2)}</span>
+                <span className="text-sm font-medium">Today</span>
+                <span className="text-sm font-bold">${(revenueStats?.today || 0).toFixed(2)}</span>
               </div>
               <div className="w-full bg-secondary rounded-full h-2">
-                <div className="bg-accent h-2 rounded-full" style={{ width: '75%' }} />
+                <div className="bg-accent h-2 rounded-full" style={{ width: '40%' }} />
               </div>
             </div>
 
             <div>
               <div className="flex justify-between mb-2">
-                <span className="text-sm font-medium">Commission</span>
-                <span className="text-sm font-bold">${(revenueStats?.this_month?.total_commission || 0).toFixed(2)}</span>
+                <span className="text-sm font-medium">This Week</span>
+                <span className="text-sm font-bold">${(revenueStats?.this_week || 0).toFixed(2)}</span>
               </div>
               <div className="w-full bg-secondary rounded-full h-2">
-                <div className="bg-accent h-2 rounded-full" style={{ width: '45%' }} />
+                <div className="bg-accent h-2 rounded-full" style={{ width: '60%' }} />
               </div>
             </div>
 
             <div>
               <div className="flex justify-between mb-2">
-                <span className="text-sm font-medium">Net Revenue</span>
-                <span className="text-sm font-bold">${(revenueStats?.this_month?.net_revenue || 0).toFixed(2)}</span>
+                <span className="text-sm font-medium">This Month</span>
+                <span className="text-sm font-bold">${(revenueStats?.this_month || 0).toFixed(2)}</span>
               </div>
               <div className="w-full bg-secondary rounded-full h-2">
-                <div className="bg-green-500 h-2 rounded-full" style={{ width: '80%' }} />
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: '75%' }} />
               </div>
             </div>
           </div>

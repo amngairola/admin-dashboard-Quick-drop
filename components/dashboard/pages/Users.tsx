@@ -3,17 +3,19 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useUsers } from '@/lib/hooks/useUsers'
-import { Search, CheckCircle, XCircle, MoreVertical } from 'lucide-react'
+import { Search, User, MoreVertical } from 'lucide-react'
 
 export default function Users() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [userType, setUserType] = useState<'all' | 'rider' | 'driver'>('all')
-  const { data: users = [] } = useUsers({
-    userType: userType === 'all' ? undefined : (userType as 'rider' | 'driver'),
+  const [page, setPage] = useState(1)
+  const pageSize = 10
+
+  const { data: users = [], isLoading } = useUsers({
     search: searchTerm,
+    limit: pageSize * page,
   })
 
-  const filteredUsers = users.slice(0, 20)
+  const paginatedUsers = users.slice((page - 1) * pageSize, page * pageSize)
 
   return (
     <div className="p-6 space-y-6">
@@ -23,12 +25,12 @@ export default function Users() {
         <p className="text-muted-foreground">Manage riders and drivers on your platform</p>
       </motion.div>
 
-      {/* Filters */}
+      {/* Search */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="flex flex-col sm:flex-row gap-4"
+        className="flex gap-4"
       >
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -36,25 +38,12 @@ export default function Users() {
             type="text"
             placeholder="Search users by name or email..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setPage(1)
+            }}
             className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
           />
-        </div>
-
-        <div className="flex gap-2">
-          {(['all', 'rider', 'driver'] as const).map((type) => (
-            <button
-              key={type}
-              onClick={() => setUserType(type)}
-              className={`px-4 py-2 rounded-lg transition-all ${
-                userType === type
-                  ? 'bg-accent text-accent-foreground'
-                  : 'bg-secondary text-foreground hover:bg-border'
-              }`}
-            >
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </button>
-          ))}
         </div>
       </motion.div>
 
@@ -69,17 +58,21 @@ export default function Users() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
-                <th className="px-6 py-3 text-left text-sm font-semibold">User</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Type</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Status</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Rating</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Rides</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Name</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Email</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold">Joined</th>
                 <th className="px-6 py-3 text-right text-sm font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user, index) => (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">
+                    Loading...
+                  </td>
+                </tr>
+              ) : paginatedUsers.length > 0 ? (
+                paginatedUsers.map((user, index) => (
                   <motion.tr
                     key={user.id}
                     initial={{ opacity: 0 }}
@@ -88,40 +81,32 @@ export default function Users() {
                     className="border-b border-border hover:bg-secondary/50 transition-colors"
                   >
                     <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium">{user.full_name}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        user.user_type === 'driver'
-                          ? 'bg-blue-500/10 text-blue-500'
-                          : 'bg-purple-500/10 text-purple-500'
-                      }`}>
-                        {user.user_type.charAt(0).toUpperCase() + user.user_type.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {user.is_active ? (
-                          <>
-                            <CheckCircle className="w-4 h-4 text-green-500" />
-                            <span className="text-sm">Active</span>
-                          </>
+                      <div className="flex items-center gap-3">
+                        {user.avatar_url ? (
+                          <img
+                            src={user.avatar_url}
+                            alt={user.name}
+                            className="w-8 h-8 rounded-full"
+                          />
                         ) : (
-                          <>
-                            <XCircle className="w-4 h-4 text-red-500" />
-                            <span className="text-sm">Inactive</span>
-                          </>
+                          <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
+                            <User className="w-4 h-4" />
+                          </div>
                         )}
+                        <p className="font-medium">{user.name}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm font-medium">{user.rating.toFixed(1)} ⭐</span>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm">{user.total_rides}</span>
+                      <p className="text-sm">
+                        {new Date(user.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </p>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
@@ -132,7 +117,7 @@ export default function Users() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                  <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">
                     No users found
                   </td>
                 </tr>
@@ -141,6 +126,36 @@ export default function Users() {
           </table>
         </div>
       </motion.div>
+
+      {/* Pagination */}
+      {users.length > pageSize && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="flex items-center justify-between"
+        >
+          <p className="text-sm text-muted-foreground">
+            Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, users.length)} of {users.length} users
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 border border-border rounded-lg hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={page * pageSize >= users.length}
+              className="px-4 py-2 border border-border rounded-lg hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            >
+              Next
+            </button>
+          </div>
+        </motion.div>
+      )}
     </div>
   )
 }
