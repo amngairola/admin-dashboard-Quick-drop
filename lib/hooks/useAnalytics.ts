@@ -1,5 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { getRevenueStats, getRevenueByDate, getTopRoutes, getUserStats } from '@/lib/services/analytics'
+import {
+  getRevenueStats,
+  getRevenueChart,
+  getBookingTrendChart,
+  getBookingStatusStats,
+  getUserStats,
+} from '@/lib/services/analytics'
 
 export function useRevenueStats() {
   return useQuery({
@@ -9,18 +15,26 @@ export function useRevenueStats() {
   })
 }
 
-export function useRevenueByDate(dateRange: { from: Date; to: Date }) {
+export function useRevenueChart() {
   return useQuery({
-    queryKey: ['analytics:revenue:byDate', dateRange],
-    queryFn: () => getRevenueByDate(dateRange),
+    queryKey: ['analytics:revenue:chart'],
+    queryFn: () => getRevenueChart(),
     staleTime: 1000 * 60 * 10,
   })
 }
 
-export function useTopRoutes(limit?: number) {
+export function useBookingTrendChart() {
   return useQuery({
-    queryKey: ['analytics:topRoutes', limit],
-    queryFn: () => getTopRoutes(limit),
+    queryKey: ['analytics:bookingTrend:chart'],
+    queryFn: () => getBookingTrendChart(),
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
+export function useBookingStatusStats() {
+  return useQuery({
+    queryKey: ['analytics:bookingStatus'],
+    queryFn: () => getBookingStatusStats(),
     staleTime: 1000 * 60 * 10,
   })
 }

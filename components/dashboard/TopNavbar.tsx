@@ -84,7 +84,7 @@ export default function TopNavbar({ onMenuClick }: TopNavbarProps) {
                 {unreadNotifications.length > 0 ? (
                   unreadNotifications.slice(0, 5).map((notif) => (
                     <div key={notif.id} className="p-2 bg-secondary rounded hover:bg-secondary/80 transition-colors cursor-pointer">
-                      <p className="text-sm font-medium">{notif.title}</p>
+                      <p className="text-sm font-medium capitalize">{notif.type.replace(/_/g, ' ')}</p>
                       <p className="text-xs text-muted-foreground mt-1">{notif.message}</p>
                     </div>
                   ))

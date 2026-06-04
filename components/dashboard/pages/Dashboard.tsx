@@ -5,9 +5,10 @@ import StatsCard from '../components/StatsCard'
 import TrendChart from '../components/TrendChart'
 import RecentActivity from '../components/RecentActivity'
 import { useBookingStats } from '@/lib/hooks/useBookings'
-import { useUserStats } from '@/lib/hooks/useAnalytics'
+import { useUserStats, useRevenueStats } from '@/lib/hooks/useAnalytics'
 import { useRecentBookings } from '@/lib/hooks/useBookings'
 import { TrendingUp, Users, MapPin, DollarSign, Activity, Clock } from 'lucide-react'
+import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts'
 
 const container = {
   hidden: { opacity: 0 },
@@ -22,56 +23,65 @@ const container = {
 
 const item = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 300,
+      damping: 30,
+    },
+  },
 }
 
 export default function Dashboard() {
   const { data: bookingStats, isLoading: statsLoading } = useBookingStats()
   const { data: userStats, isLoading: usersLoading } = useUserStats()
+  const { data: revenueStats } = useRevenueStats()
   const { data: recentBookings = [] } = useRecentBookings(5)
 
   const stats = [
     {
-      title: 'Total Bookings',
-      value: bookingStats ? bookingStats.total_completed : 0,
-      icon: Activity,
-      color: 'text-blue-500',
-      trend: '+12% from last week',
-    },
-    {
-      title: 'Total Revenue',
-      value: '$12,450',
-      icon: DollarSign,
-      color: 'text-green-500',
-      trend: '+8% from last week',
-    },
-    {
-      title: 'Active Users',
-      value: userStats ? (userStats.total_riders + userStats.total_drivers).toString() : 0,
+      title: 'Total Users',
+      value: (userStats?.total_users || 0).toString(),
       icon: Users,
       color: 'text-purple-500',
-      trend: `${userStats?.total_drivers || 0} drivers, ${userStats?.total_riders || 0} riders`,
+      change: 'Registered users',
+    },
+    {
+      title: 'Total Bookings',
+      value: ((bookingStats?.total_completed || 0) + (bookingStats?.total_ongoing || 0) + (bookingStats?.total_pending || 0)).toString(),
+      icon: Activity,
+      color: 'text-blue-500',
+      change: 'All time',
     },
     {
       title: 'Pending Bookings',
-      value: bookingStats?.total_pending || 0,
+      value: (bookingStats?.total_pending || 0).toString(),
       icon: Clock,
       color: 'text-yellow-500',
-      trend: 'Awaiting driver assignment',
+      change: 'Awaiting action',
     },
     {
-      title: 'Completed Today',
-      value: bookingStats?.total_completed || 0,
+      title: 'Completed Bookings',
+      value: (bookingStats?.total_completed || 0).toString(),
       icon: TrendingUp,
       color: 'text-emerald-500',
-      trend: '98% completion rate',
+      change: 'Successfully done',
     },
     {
-      title: 'Avg Rating',
-      value: '4.8',
+      title: 'Cancelled Bookings',
+      value: (bookingStats?.total_cancelled || 0).toString(),
       icon: MapPin,
-      color: 'text-orange-500',
-      trend: 'Based on 2,345 rides',
+      color: 'text-red-500',
+      change: 'Cancelled orders',
+    },
+    {
+      title: 'Total Revenue',
+      value: `$${(bookingStats?.total_revenue || 0).toFixed(2)}`,
+      icon: DollarSign,
+      color: 'text-green-500',
+      change: 'From all bookings',
     },
   ]
 
@@ -97,7 +107,7 @@ export default function Dashboard() {
               value={stat.value}
               icon={stat.icon}
               color={stat.color}
-              trend={stat.trend}
+              change={stat.change}
             />
           </motion.div>
         ))}
@@ -125,38 +135,38 @@ export default function Dashboard() {
               {
                 label: 'Completed',
                 value: bookingStats?.total_completed || 0,
-                percentage: 65,
                 color: 'bg-green-500',
               },
               {
-                label: 'Ongoing',
+                label: 'In Progress',
                 value: bookingStats?.total_ongoing || 0,
-                percentage: 20,
                 color: 'bg-blue-500',
               },
               {
                 label: 'Pending',
                 value: bookingStats?.total_pending || 0,
-                percentage: 10,
                 color: 'bg-yellow-500',
               },
               {
                 label: 'Cancelled',
                 value: bookingStats?.total_cancelled || 0,
-                percentage: 5,
                 color: 'bg-red-500',
               },
-            ].map((status, idx) => (
-              <div key={idx}>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm font-medium">{status.label}</span>
-                  <span className="text-sm text-muted-foreground">{status.value}</span>
+            ].map((status, idx) => {
+              const total = (bookingStats?.total_completed || 0) + (bookingStats?.total_ongoing || 0) + (bookingStats?.total_pending || 0) + (bookingStats?.total_cancelled || 0)
+              const percentage = total > 0 ? (status.value / total) * 100 : 0
+              return (
+                <div key={idx}>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm font-medium">{status.label}</span>
+                    <span className="text-sm text-muted-foreground">{status.value}</span>
+                  </div>
+                  <div className="w-full bg-secondary rounded-full h-2">
+                    <div className={`${status.color} h-2 rounded-full`} style={{ width: `${percentage}%` }} />
+                  </div>
                 </div>
-                <div className="w-full bg-secondary rounded-full h-2">
-                  <div className={`${status.color} h-2 rounded-full`} style={{ width: `${status.percentage}%` }} />
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </motion.div>
       </div>

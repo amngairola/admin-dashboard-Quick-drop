@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { getNotifications, getUnreadNotifications } from '@/lib/services/notifications'
+import { getNotifications, getUnreadNotifications, subscribeToNotifications, type Notification } from '@/lib/services/notifications'
+import { toast } from 'sonner'
 
 export function useNotifications() {
   const queryClient = useQueryClient()
@@ -62,25 +63,37 @@ export function useNotificationSubscription() {
   useEffect(() => {
     if (!userId) return
 
-    const channel = supabase
-      .channel(`notifications:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `admin_id=eq.${userId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
-          queryClient.invalidateQueries({ queryKey: ['notifications:unread', userId] })
-        }
-      )
-      .subscribe()
+    const handleNewNotification = (notification: Notification) => {
+      // Show toast notification
+      const messageMap: Record<string, string> = {
+        booking_created: 'New booking received',
+        booking_updated: 'Booking updated',
+        booking_completed: 'Booking completed',
+        booking_cancelled: 'Booking cancelled',
+      }
+
+      const message = messageMap[notification.type] || notification.message
+
+      if (notification.type === 'booking_completed') {
+        toast.success(message, { description: notification.message })
+      } else if (notification.type === 'booking_cancelled') {
+        toast.error(message, { description: notification.message })
+      } else {
+        toast.info(message, { description: notification.message })
+      }
+
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
+      queryClient.invalidateQueries({ queryKey: ['notifications:unread', userId] })
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings:stats'] })
+    }
+
+    // Subscribe to real-time notifications
+    const unsubscribe = subscribeToNotifications(userId, handleNewNotification)
 
     return () => {
-      channel.unsubscribe()
+      unsubscribe()
     }
   }, [userId, queryClient])
 }
