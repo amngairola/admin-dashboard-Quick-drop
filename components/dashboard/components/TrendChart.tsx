@@ -2,6 +2,7 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { useRevenueChart, useBookingTrendChart } from '@/lib/hooks/useAnalytics'
+import { formatCurrency } from '@/lib/utils'
 
 export default function TrendChart() {
   const { data: revenueData = [] } = useRevenueChart()
@@ -39,13 +40,19 @@ export default function TrendChart() {
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis dataKey="date" stroke="var(--muted-foreground)" style={{ fontSize: '12px' }} />
             <YAxis stroke="var(--muted-foreground)" style={{ fontSize: '12px' }} />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'var(--card)', 
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'var(--card)',
                 border: '1px solid var(--border)',
-                borderRadius: '8px'
+                borderRadius: '8px',
               }}
               labelStyle={{ color: 'var(--foreground)' }}
+              formatter={(value, name) => {
+                if (name === 'revenue') {
+                  return [formatCurrency(Number(value)), 'Revenue']
+                }
+                return [value, name === 'bookings' ? 'Bookings' : name]
+              }}
             />
             <Legend />
             <Area type="monotone" dataKey="bookings" stroke="var(--chart-1)" fillOpacity={1} fill="url(#colorBookings)" />

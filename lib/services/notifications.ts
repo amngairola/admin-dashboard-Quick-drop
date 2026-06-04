@@ -68,10 +68,14 @@ export async function getUnreadNotifications(userId: string) {
     .eq('is_read', false)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('Error fetching unread notifications:', error)
-    return []
-  }
+    if (error) {
+      console.error('Error fetching unread notifications:', JSON.stringify(error, null, 2))
+      console.error('Error code:', error.code)
+      console.error('Error message:', error.message)
+      console.error('Error details:', error.details)
+      console.error('Error hint:', error.hint)
+      return []
+    }
 
   return (data as Notification[]) || []
 }

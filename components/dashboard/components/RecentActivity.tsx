@@ -1,47 +1,25 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Check, AlertCircle, Clock } from 'lucide-react'
-import { Booking } from '@/lib/services/bookings'
+import { Check, AlertCircle, Clock, Truck } from 'lucide-react'
+import type { BookingWithCustomer } from '@/lib/services/server/bookings'
 import { formatDistanceToNow } from 'date-fns'
+import { formatCurrency } from '@/lib/utils'
+import { getStatusColor, getStatusLabel, isBookingStatus } from '@/lib/types/booking'
 
 interface RecentActivityProps {
-  bookings?: Booking[]
+  bookings?: BookingWithCustomer[]
 }
 
-const getStatusColor = (status: Booking['status']) => {
-  switch (status) {
-    case 'completed':
-      return 'bg-green-500/10 text-green-500'
-    case 'in progress':
-      return 'bg-blue-500/10 text-blue-500'
-    case 'pending':
-      return 'bg-yellow-500/10 text-yellow-500'
-    case 'cancelled':
-      return 'bg-red-500/10 text-red-500'
-    case 'accepted':
-      return 'bg-purple-500/10 text-purple-500'
-    default:
-      return 'bg-gray-500/10 text-gray-500'
-  }
-}
-
-const getStatusIcon = (status: Booking['status']) => {
-  switch (status) {
-    case 'completed':
-      return <Check className="w-4 h-4" />
-    case 'pending':
-      return <Clock className="w-4 h-4" />
-    case 'cancelled':
-      return <AlertCircle className="w-4 h-4" />
-    default:
-      return <Clock className="w-4 h-4" />
-  }
+function getStatusIcon(status: string) {
+  if (status === 'delivered') return <Check className="w-4 h-4" />
+  if (status === 'request_received') return <Clock className="w-4 h-4" />
+  if (status === 'on_the_way') return <Truck className="w-4 h-4" />
+  if (status === 'cancelled') return <AlertCircle className="w-4 h-4" />
+  return <Clock className="w-4 h-4" />
 }
 
 export default function RecentActivity({ bookings = [] }: RecentActivityProps) {
-  const displayBookings = bookings.length > 0 ? bookings : getPlaceholderBookings()
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -53,8 +31,8 @@ export default function RecentActivity({ bookings = [] }: RecentActivityProps) {
       </div>
 
       <div className="divide-y divide-border max-h-96 overflow-y-auto">
-        {displayBookings.length > 0 ? (
-          displayBookings.map((booking, index) => (
+        {bookings.length > 0 ? (
+          bookings.map((booking, index) => (
             <motion.div
               key={booking.id}
               initial={{ opacity: 0, x: -20 }}
@@ -63,9 +41,7 @@ export default function RecentActivity({ bookings = [] }: RecentActivityProps) {
               className="p-4 hover:bg-secondary/50 transition-colors"
             >
               <div className="flex items-start gap-3">
-                <div
-                  className={`mt-1 p-2 rounded-lg ${getStatusColor(booking.status)}`}
-                >
+                <div className={`mt-1 p-2 rounded-lg ${getStatusColor(booking.status)}`}>
                   {getStatusIcon(booking.status)}
                 </div>
 
@@ -74,12 +50,16 @@ export default function RecentActivity({ bookings = [] }: RecentActivityProps) {
                     <p className="font-medium truncate">
                       {booking.pickup_address} → {booking.drop_address}
                     </p>
-                    <span className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${getStatusColor(booking.status)}`}>
-                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${getStatusColor(booking.status)}`}
+                    >
+                      {isBookingStatus(booking.status)
+                        ? getStatusLabel(booking.status)
+                        : getStatusLabel(booking.status)}
                     </span>
                   </div>
                   <div className="mt-1 flex items-center justify-between text-sm text-muted-foreground">
-                    <span>${booking.estimated_price.toFixed(2)}</span>
+                    <span>{formatCurrency(booking.estimated_price)}</span>
                     <span>{formatDistanceToNow(new Date(booking.created_at), { addSuffix: true })}</span>
                   </div>
                 </div>
@@ -87,15 +67,9 @@ export default function RecentActivity({ bookings = [] }: RecentActivityProps) {
             </motion.div>
           ))
         ) : (
-          <div className="p-8 text-center text-muted-foreground">
-            No recent bookings
-          </div>
+          <div className="p-8 text-center text-muted-foreground">No recent bookings</div>
         )}
       </div>
     </motion.div>
   )
-}
-
-function getPlaceholderBookings(): Booking[] {
-  return []
 }

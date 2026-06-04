@@ -1,47 +1,37 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import Sidebar from './Sidebar'
 import TopNavbar from './TopNavbar'
-import DashboardPage from './pages/Dashboard'
-import Users from './pages/Users'
-import Bookings from './pages/Bookings'
-import Analytics from './pages/Analytics'
 
-export default function DashboardLayout() {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [currentPage, setCurrentPage] = useState('dashboard')
+  const pathname = usePathname()
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'users':
-        return <Users />
-      case 'bookings':
-        return <Bookings />
-      case 'analytics':
-        return <Analytics />
-      default:
-        return <DashboardPage />
-    }
-  }
+  const currentPage =
+    pathname === '/dashboard'
+      ? 'dashboard'
+      : pathname.startsWith('/dashboard/users')
+        ? 'users'
+        : pathname.startsWith('/dashboard/bookings')
+          ? 'bookings'
+          : pathname.startsWith('/dashboard/analytics')
+            ? 'analytics'
+            : 'dashboard'
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
-      <Sidebar 
-        open={sidebarOpen} 
+      <Sidebar
+        open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         currentPage={currentPage}
-        onPageChange={setCurrentPage}
       />
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopNavbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-        
-        <main className="flex-1 overflow-y-auto">
-          {renderPage()}
-        </main>
+
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   )

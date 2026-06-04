@@ -21,19 +21,19 @@ export async function getRevenueStats() {
     supabase
       .from('bookings')
       .select('estimated_price')
-      .eq('status', 'completed')
+      .eq('status', 'delivered')
       .gte('created_at', today.toISOString())
       .lt('created_at', tomorrowStart.toISOString()),
     supabase
       .from('bookings')
       .select('estimated_price')
-      .eq('status', 'completed')
+      .eq('status', 'delivered')
       .gte('created_at', weekStart.toISOString())
       .lt('created_at', tomorrowStart.toISOString()),
     supabase
       .from('bookings')
       .select('estimated_price')
-      .eq('status', 'completed')
+      .eq('status', 'delivered')
       .gte('created_at', monthStart.toISOString())
       .lt('created_at', tomorrowStart.toISOString()),
   ])
@@ -109,18 +109,24 @@ export async function getBookingTrendChart() {
 export async function getBookingStatusStats() {
   const supabase = createClient()
 
-  const [completed, inProgress, pending, cancelled] = await Promise.all([
-    supabase.from('bookings').select('id', { count: 'exact' }).eq('status', 'completed'),
-    supabase.from('bookings').select('id', { count: 'exact' }).eq('status', 'in progress'),
-    supabase.from('bookings').select('id', { count: 'exact' }).eq('status', 'pending'),
-    supabase.from('bookings').select('id', { count: 'exact' }).eq('status', 'cancelled'),
-  ])
+  const results = await Promise.all(
+    [
+      'request_received',
+      'rider_assigned',
+      'pickup_completed',
+      'on_the_way',
+      'delivered',
+    ].map((status) =>
+      supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('status', status),
+    ),
+  )
 
   return [
-    { name: 'Completed', value: completed.count || 0, fill: '#22c55e' },
-    { name: 'In Progress', value: inProgress.count || 0, fill: '#3b82f6' },
-    { name: 'Pending', value: pending.count || 0, fill: '#eab308' },
-    { name: 'Cancelled', value: cancelled.count || 0, fill: '#ef4444' },
+    { name: 'Request Received', value: results[0].count || 0, fill: '#f59e0b' },
+    { name: 'Rider Assigned', value: results[1].count || 0, fill: '#3b82f6' },
+    { name: 'Pickup Completed', value: results[2].count || 0, fill: '#6366f1' },
+    { name: 'On The Way', value: results[3].count || 0, fill: '#f97316' },
+    { name: 'Delivered', value: results[4].count || 0, fill: '#22c55e' },
   ]
 }
 

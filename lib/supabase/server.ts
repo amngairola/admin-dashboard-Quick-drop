@@ -7,21 +7,6 @@ import { cookies } from 'next/headers'
  * it.
  */
 export async function createClient() {
-
-  console.log(
-    "SERVER URL:",
-    process.env.NEXT_PUBLIC_SUPABASE_URL
-  );
-  
-  console.log(
-    "SERVER KEY PREFIX:",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 10)
-  );
-  
-  console.log(
-    "SERVER KEY LENGTH:",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length
-  );
   const cookieStore = await cookies()
 
   return createServerClient(

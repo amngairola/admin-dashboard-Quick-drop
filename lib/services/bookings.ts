@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/client'
 
+import type { BookingStatus } from '@/lib/types/booking'
+
 export interface Booking {
   id: string
   user_id: string
@@ -8,7 +10,7 @@ export interface Booking {
   drop_address: string
   phone: string
   notes: string
-  status: 'pending' | 'accepted' | 'in progress' | 'completed' | 'cancelled'
+  status: BookingStatus | string
   created_at: string
   pickup_lat?: number
   pickup_lng?: number
@@ -141,7 +143,7 @@ export async function getBookingsWithCustomer(filters?: {
   const supabase = createClient()
   let query = supabase
     .from('bookings')
-    .select('*, users(name, email)')
+    .select('*, users!bookings_user_id_fkey(name, email, avatar_url)')
     .order('created_at', { ascending: false })
 
   if (filters?.status && filters.status !== 'all') {
@@ -181,19 +183,27 @@ export async function getBookingsWithCustomer(filters?: {
 export async function getBookingStats() {
   const supabase = createClient()
 
-  const [completed, inProgress, pending, cancelled, allBookings] = await Promise.all([
-    supabase.from('bookings').select('id, estimated_price', { count: 'exact' }).eq('status', 'completed'),
-    supabase.from('bookings').select('id', { count: 'exact' }).eq('status', 'in progress'),
-    supabase.from('bookings').select('id', { count: 'exact' }).eq('status', 'pending'),
-    supabase.from('bookings').select('id', { count: 'exact' }).eq('status', 'cancelled'),
+  const [total, pending, delivered, cancelled, allBookings] = await Promise.all([
+    supabase.from('bookings').select('id', { count: 'exact', head: true }),
+    supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'request_received'),
+    supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'delivered'),
+    supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'cancelled'),
     supabase.from('bookings').select('estimated_price'),
   ])
 
-  const totalRevenue = (allBookings.data as any[])?.reduce((sum, b) => sum + (b.estimated_price || 0), 0) || 0
+  const totalRevenue =
+    (allBookings.data as { estimated_price: number }[] | null)?.reduce(
+      (sum, b) => sum + (b.estimated_price || 0),
+      0,
+    ) ?? 0
 
   return {
-    total_completed: completed.count || 0,
-    total_ongoing: inProgress.count || 0,
+    total_bookings: total.count || 0,
+    total_completed: delivered.count || 0,
+    total_ongoing: 0,
     total_pending: pending.count || 0,
     total_cancelled: cancelled.count || 0,
     total_revenue: totalRevenue,

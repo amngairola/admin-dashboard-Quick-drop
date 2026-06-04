@@ -3,6 +3,8 @@
 import { motion } from 'framer-motion'
 import { useRevenueStats, useUserStats } from '@/lib/hooks/useAnalytics'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } from 'recharts'
+import { formatCurrency } from '@/lib/utils'
+import DashboardPageHeader from '../DashboardPageHeader'
 
 export default function Analytics() {
   const { data: revenueStats } = useRevenueStats()
@@ -10,9 +12,12 @@ export default function Analytics() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-        <h1 className="text-3xl font-bold">Analytics</h1>
-        <p className="text-muted-foreground">In-depth metrics and insights</p>
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+        <DashboardPageHeader
+          title="Analytics"
+          description="In-depth metrics and insights"
+          breadcrumb="Analytics"
+        />
       </motion.div>
 
       {/* Key Metrics */}
@@ -22,9 +27,9 @@ export default function Analytics() {
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
       >
         {[
-          { label: 'Revenue Today', value: `$${(revenueStats?.today || 0).toFixed(0)}`, change: 'Today' },
-          { label: 'This Week', value: `$${(revenueStats?.this_week || 0).toFixed(0)}`, change: 'Last 7 days' },
-          { label: 'This Month', value: `$${(revenueStats?.this_month || 0).toFixed(0)}`, change: 'Current month' },
+          { label: 'Revenue Today', value: formatCurrency(revenueStats?.today || 0, 0), change: 'Today' },
+          { label: 'This Week', value: formatCurrency(revenueStats?.this_week || 0, 0), change: 'Last 7 days' },
+          { label: 'This Month', value: formatCurrency(revenueStats?.this_month || 0, 0), change: 'Current month' },
           { label: 'Total Users', value: userStats?.total_users || 0, change: 'Registered' },
         ].map((metric, index) => (
           <motion.div
@@ -59,7 +64,7 @@ export default function Analytics() {
             <div>
               <div className="flex justify-between mb-2">
                 <span className="text-sm font-medium">Today</span>
-                <span className="text-sm font-bold">${(revenueStats?.today || 0).toFixed(2)}</span>
+                <span className="text-sm font-bold">{formatCurrency(revenueStats?.today || 0)}</span>
               </div>
               <div className="w-full bg-secondary rounded-full h-2">
                 <div className="bg-accent h-2 rounded-full" style={{ width: '40%' }} />
@@ -69,7 +74,7 @@ export default function Analytics() {
             <div>
               <div className="flex justify-between mb-2">
                 <span className="text-sm font-medium">This Week</span>
-                <span className="text-sm font-bold">${(revenueStats?.this_week || 0).toFixed(2)}</span>
+                <span className="text-sm font-bold">{formatCurrency(revenueStats?.this_week || 0)}</span>
               </div>
               <div className="w-full bg-secondary rounded-full h-2">
                 <div className="bg-accent h-2 rounded-full" style={{ width: '60%' }} />
@@ -79,7 +84,7 @@ export default function Analytics() {
             <div>
               <div className="flex justify-between mb-2">
                 <span className="text-sm font-medium">This Month</span>
-                <span className="text-sm font-bold">${(revenueStats?.this_month || 0).toFixed(2)}</span>
+                <span className="text-sm font-bold">{formatCurrency(revenueStats?.this_month || 0)}</span>
               </div>
               <div className="w-full bg-secondary rounded-full h-2">
                 <div className="bg-green-500 h-2 rounded-full" style={{ width: '75%' }} />
