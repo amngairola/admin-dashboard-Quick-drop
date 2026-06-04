@@ -1,63 +1,90 @@
-import { updateSession } from '@/lib/supabase/proxy'
+// middleware.ts
 import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
-  let response = await updateSession(request)
+  // Create a single response object we'll mutate throughout
+  let supabaseResponse = NextResponse.next({
+    request,
+  })
 
-  // Protect dashboard routes
-  if (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname === '/') {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options)
-            )
-          },
+  // Create ONE Supabase client that reads AND writes to the same response
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
         },
-      }
-    )
+        setAll(cookiesToSet) {
+          // Write to both request and response so cookies propagate correctly
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          )
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+  // IMPORTANT: Always call getUser() to refresh the session token if needed.
+  // Do NOT use getSession() here — it doesn't validate the JWT server-side.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-    // If no user, redirect to login
+  console.log('PATH:', request.nextUrl.pathname)
+  console.log('USER:', user?.id ?? 'null')
+
+  const isProtectedRoute =
+    request.nextUrl.pathname.startsWith('/dashboard') ||
+    request.nextUrl.pathname === '/'
+
+  if (isProtectedRoute) {
     if (!user) {
-      return NextResponse.redirect(new URL('/auth/login', request.url))
+      console.log('No user — redirecting to login')
+      const redirectResponse = NextResponse.redirect(
+        new URL('/auth/login', request.url)
+      )
+      // Forward any cookies that were set (e.g. PKCE state cleanup)
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie.name, cookie.value, cookie)
+      })
+      return redirectResponse
     }
 
-    // Check if user is an admin
-    const { data: adminData } = await supabase
+    const { data: adminData, error: adminError } = await supabase
       .from('admins')
       .select('id, is_active')
       .eq('id', user.id)
       .single()
 
+    console.log('ADMIN DATA:', adminData)
+    console.log('ADMIN ERROR:', adminError?.message ?? 'none')
+
     if (!adminData || !adminData.is_active) {
-      return NextResponse.redirect(new URL('/auth/login', request.url))
+      console.log('Not an active admin — redirecting to login')
+      const redirectResponse = NextResponse.redirect(
+        new URL('/auth/login', request.url)
+      )
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie.name, cookie.value, cookie)
+      })
+      return redirectResponse
     }
   }
 
-  return response
+  // IMPORTANT: Return supabaseResponse, not a new NextResponse.
+  // Returning a different object drops the session cookies Supabase set.
+  return supabaseResponse
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - images - .svg, .png, .jpg, .jpeg, .gif, .webp
-     * Feel free to modify this pattern to include more paths.
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
